@@ -60,9 +60,9 @@ def proc_raw(f_num, data_dir='.'):
                 # create pd.Series with DatetimeIndex
                 burst_ts = pd.Series(burst_1d, index=idx)
 
-            # save each burst time series to the dict to be returned
-            time_str = str(idx[0])
-            proked_data[time_str] = burst_ts
+                # save each burst time series to the dict to be returned
+                time_str = str(idx[0])
+                proked_data[time_str] = burst_ts
 
     fd.close()
 
