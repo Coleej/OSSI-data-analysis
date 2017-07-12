@@ -5,24 +5,23 @@ import os
 import re
 
 
-def proc_raw(f_num, data_dir='.'):
+def format_raw(f_num, data_dir='.'):
     '''Processes a directory of raw output files'''
 
     # hardcoded values
     # pre-allocate the dictionary which will be returned
-    proked_data = dict()
+    formatted_data = dict()
     f_pre = 'WLOG_'
     f_suf = '.CSV'
 
     # regex for time stamp
-    re_str = '^Y17,M(\d{2}),D(\d{2}),H(\d{2}),M(\d{2}),S(\d{2}),+$'
+    re_str = '^Y17,M(\d{2}),D(\d{2}),H(\d{2}),M(\d{2}),S(\d{2}),+\r?$'
     regexp = re.compile(re_str)
 
     # get directory info
     os.chdir(data_dir)
 
-    # main loop to open and process the files
-    # for f_num in range(2, 75):
+    # open and format the file
     f_name = "{}{:03d}{}".format(f_pre, f_num, f_suf)
 
     # Check file for readability
@@ -62,8 +61,28 @@ def proc_raw(f_num, data_dir='.'):
 
                 # save each burst time series to the dict to be returned
                 time_str = str(idx[0])
-                proked_data[time_str] = burst_ts
+                formatted_data[time_str] = burst_ts
 
     fd.close()
 
-    return proked_data
+    return formatted_data
+
+
+def simple_Hs(formatted_data):
+    ''' Simple function to compute Hs with 4*std of demeaned water level '''
+
+    # create series of Hs representative for each burst
+    waves = pd.Series()
+
+    # compute signficant wave height
+    data = {tstmp: data * (1000/4096)
+            for tstmp, data in formatted_data.items()}
+    Hs = [obs - obs.mean() for obs in data.values()]
+    Hs = [4 * obs.std() for obs in data.values()]
+
+    # Save to the pd.Series and reorder the timestamps
+    tstmp = [pd.to_datetime(key) for key in data.keys()]
+    waves = pd.Series(Hs, index=tstmp)
+    waves = waves.sort_index()
+
+    return waves
