@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import datetime as dt
+import wafo.objects as wo
 import os
 import re
 
@@ -68,21 +69,49 @@ def format_raw(f_num, data_dir='.'):
     return formatted_data
 
 
-def simple_Hs(formatted_data):
-    ''' Simple function to compute Hs with 4*std of demeaned water level '''
+def simple_waves(formatted_data):
+    ''' Simple function to compute Hm0 (m) with 4*std of demeaned water level
+        Also, it will return the detrended water level
 
-    # create series of Hs representative for each burst
-    waves = pd.Series()
+        returns (water_level, Hm0)
+    '''
+
+    # create series of Hm0 representative for each burst
+    Hm0 = pd.Series()
+
+    # detrend and convert counts to meters (1000 mm = 4096 cts)
+    data = {tstmp: data / 4096 for tstmp, data in formatted_data.items()}
+    water_level = {tstmp: out - out.mean() for tstmp, out in data.items()}
 
     # compute signficant wave height
-    data = {tstmp: data * (1000/4096)
-            for tstmp, data in formatted_data.items()}
-    Hs = [obs - obs.mean() for obs in data.values()]
-    Hs = [4 * obs.std() for obs in data.values()]
+    Hm0_dum = [4 * obs.std() for obs in water_level.values()]
 
     # Save to the pd.Series and reorder the timestamps
-    tstmp = [pd.to_datetime(key) for key in data.keys()]
-    waves = pd.Series(Hs, index=tstmp)
-    waves = waves.sort_index()
+    tstmp = [pd.to_datetime(key) for key in water_level.keys()]
+    Hm0 = pd.Series(Hm0_dum, index=tstmp)
+    Hm0 = Hm0.sort_index()
 
-    return waves
+    return (water_level, Hm0)
+
+
+def make_wf_mat(wl, fs=10, Tb=1200):
+    ''' Convert pandas series to mat for use in wafo
+        fs is the sampling frequency (Hz) and Tb is the burst duration (s)
+    '''
+
+    wf_mat = dict()
+
+    # construct time vector for burst
+    time = np.linspace(0, Tb - (1 / fs), fs * Tb)
+
+    # loop to construct wf_mat
+    for tstmp, obs in wl.items():
+
+        # make mat
+        mat = np.asarray([time, obs.values])
+        mat = mat.transpose()
+
+        # save to dict
+        wf_mat[tstmp] = mat
+
+    return wf_mat
