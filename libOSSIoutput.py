@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import datetime as dt
-import wafo.objects as wo
+# import wafo.objects as wo
 import os
 import re
 
@@ -73,7 +73,7 @@ def simple_waves(formatted_data):
     ''' Simple function to compute Hm0 (m) with 4*std of demeaned water level
         Also, it will return the detrended water level
 
-        returns (water_level, Hm0)
+        returns (eta, Hm0)
     '''
 
     # create series of Hm0 representative for each burst
@@ -81,17 +81,17 @@ def simple_waves(formatted_data):
 
     # detrend and convert counts to meters (1000 mm = 4096 cts)
     data = {tstmp: data / 4096 for tstmp, data in formatted_data.items()}
-    water_level = {tstmp: out - out.mean() for tstmp, out in data.items()}
+    eta = {tstmp: out - out.mean() for tstmp, out in data.items()}
 
     # compute signficant wave height
-    Hm0_dum = [4 * obs.std() for obs in water_level.values()]
+    Hm0_dum = [4 * obs.std() for obs in eta.values()]
 
     # Save to the pd.Series and reorder the timestamps
-    tstmp = [pd.to_datetime(key) for key in water_level.keys()]
+    tstmp = [pd.to_datetime(key) for key in eta.keys()]
     Hm0 = pd.Series(Hm0_dum, index=tstmp)
     Hm0 = Hm0.sort_index()
 
-    return (water_level, Hm0)
+    return (eta, Hm0)
 
 
 def make_wf_mat(wl, fs=10, Tb=1200):
