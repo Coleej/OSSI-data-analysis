@@ -144,4 +144,34 @@ def compute_spectral(eta_mat, hmin=0.04):
         output:
     '''
 
-def compute_depth(eta_mat, zb=0.02)
+
+def compute_depth(formatted_data, zb=0.02):
+    ''' Simple function to compute the average depth (m) over a burst. This
+        is done by taking the mean of the data and adding the distance of the
+        instrument above the surface.
+
+        input:
+            formatted_data = A dictionary of pandas' series that are refenced
+            with the timestamp of the burst intiation and are in the count
+            units. This is the output of the format_raw function
+
+            zb = hight of staff tip from surface in meters
+
+        output:
+            h = SWL over the duration of a burst
+        '''
+
+    # Convert data from counts to meters
+    data = {tstmp: data / 4096 for tstmp, data in formatted_data.items()}
+
+    # The water depth will be the mean of the free surface elevation over the
+    # burst plus the staff's distance from the ground
+    h_dum = [obs.mean() + zb for obs in data.values()]
+
+    # Save to the pd.Series and reorder the timestamps
+    tstmp_data = [pd.to_datetime(key) for key in data.keys()]
+
+    h = pd.Series(h_dum, index=tstmp_data)
+    h = h.sort_index()
+
+    return h
